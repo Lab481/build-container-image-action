@@ -20,8 +20,8 @@ inputs:
     default: "./Dockerfile"
     required: false
   build_args:
-    description: build args
-    default: "build args to be supplied to the build. Specify as list of newline delimited KEY=VALUE tuples"
+    description: build args to be supplied to the build. Specify as list of newline delimited KEY=VALUE tuples
+    default: ""
     required: false
   build_context:
     description: path to build context (default .)
