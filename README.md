@@ -1,6 +1,6 @@
 # build-container-image-action
 
-GitHub composite action for building container images the bCyber way
+GitHub composite action for building container images the Lab481 way
 
 ## Inputs
 
@@ -70,7 +70,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Build and push container image
-        uses: bCyberGmbH/build-container-image-action@main # or use a valid tag
+        uses: Lab481/build-container-image-action@main # or use a valid tag
         with:
           registry_username: ${{ github.repository_owner }}
           registry_password: ${{ secrets.GITHUB_TOKEN }}

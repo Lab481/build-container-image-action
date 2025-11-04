@@ -1,5 +1,5 @@
 name: 'build-container-image-action'
-description: 'The official bCyber container building action'
+description: 'The official Lab481 container building action'
 
 inputs:
   registry_name:
