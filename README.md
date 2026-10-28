@@ -40,6 +40,10 @@ inputs:
   push_to_registry:
     description: push to container registry (true/false)
     required: true
+  buildx_version:
+    description: Buildx version to install, independent of the runner's preinstalled one (default v0.38.1)
+    default: "v0.38.1"
+    required: false
 ```
 
 ## Example Usage
