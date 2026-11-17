@@ -44,6 +44,10 @@ inputs:
     description: Buildx version to install, independent of the runner's preinstalled one (default v0.38.1)
     default: "v0.38.1"
     required: false
+  use_build_cache:
+    description: Read and write the BuildKit layer cache in the GitHub Actions cache (true/false, default true)
+    default: "true"
+    required: false
 ```
 
 ## Example Usage
