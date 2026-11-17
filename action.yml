@@ -38,6 +38,12 @@ inputs:
     description: Buildx version to install, independent of the runner's preinstalled one (default v0.38.1)
     default: "v0.38.1"
     required: false
+  use_build_cache:
+    description: >-
+      Read and write the BuildKit layer cache in the GitHub Actions cache (true/false, default true). Set to false when
+      uploading the cache takes longer than rebuilding the layers, e.g. on self-hosted runners with a slow uplink.
+    default: "true"
+    required: false
 
 
 runs:
@@ -82,5 +88,5 @@ runs:
         file: ${{ inputs.dockerfile_path }}
         target: ${{ inputs.build_target }}
         build-args: ${{ inputs.build_args }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        cache-from: ${{ inputs.use_build_cache == 'true' && 'type=gha' || '' }}
+        cache-to: ${{ inputs.use_build_cache == 'true' && 'type=gha,mode=max' || '' }}
