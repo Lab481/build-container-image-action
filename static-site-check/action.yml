@@ -1,0 +1,92 @@
+name: 'static-site-check'
+description: >-
+  Smoke test and CVE scan for a locally built nginx static-site image, run
+  before it is pushed. Used as the gate for unattended base image updates.
+
+inputs:
+  image:
+    description: local image reference to test (built with load true)
+    required: true
+  expect_text:
+    description: text that the page at / must contain
+    required: true
+  ok_paths:
+    description: newline separated paths that must answer 200 (besides /)
+    default: ""
+    required: false
+  missing_paths:
+    description: newline separated paths that must answer 404, e.g. repo files that must not be served
+    default: |
+      /renovate.json
+      /Dockerfile
+    required: false
+  port:
+    description: port nginx listens on inside the container
+    default: "8080"
+    required: false
+  trivy_severity:
+    description: Trivy severities that fail the check (only vulnerabilities with a fix)
+    default: "CRITICAL"
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    # Same restrictions as the Mainframe deployments: read-only root, UID 101,
+    # no capabilities, /tmp as tmpfs. The runners are persistent, so the
+    # container gets a run-unique name and is always removed.
+    - name: Smoke test
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+        EXPECT_TEXT: ${{ inputs.expect_text }}
+        OK_PATHS: ${{ inputs.ok_paths }}
+        MISSING_PATHS: ${{ inputs.missing_paths }}
+        PORT: ${{ inputs.port }}
+        NAME: smoke-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
+      run: |
+        set -euo pipefail
+        cleanup() {
+          status=$?
+          if [ "$status" -ne 0 ]; then docker logs "$NAME" 2>&1 | tail -50 || true; fi
+          docker rm -f "$NAME" >/dev/null 2>&1 || true
+          exit "$status"
+        }
+        trap cleanup EXIT
+        docker run -d --name "$NAME" -p "127.0.0.1::$PORT" \
+          --read-only --tmpfs /tmp --user 101:101 --cap-drop ALL \
+          --security-opt no-new-privileges "$IMAGE" >/dev/null
+        docker exec "$NAME" nginx -t
+        docker exec "$NAME" nginx -v
+        url="http://$(docker port "$NAME" "$PORT/tcp" | head -1)"
+        body=$(mktemp)
+        for _ in $(seq 1 20); do
+          curl -fsS "$url/" -o "$body" && break
+          sleep 1
+        done
+        grep -qF -- "$EXPECT_TEXT" "$body" || { echo "::error::/ does not contain: $EXPECT_TEXT"; exit 1; }
+        check() {
+          code=$(curl -s -o /dev/null -w '%{http_code}' "$url$1")
+          if [ "$code" != "$2" ]; then echo "::error::$1 answered $code, expected $2"; return 1; fi
+          echo "$1 -> $code"
+        }
+        failed=0
+        while IFS= read -r p; do [ -z "$p" ] || check "$p" 200 || failed=1; done <<< "$OK_PATHS"
+        while IFS= read -r p; do [ -z "$p" ] || check "$p" 404 || failed=1; done <<< "$MISSING_PATHS"
+        exit "$failed"
+
+    # Persistent runners: keep the Trivy DB in the runner's home instead of
+    # round-tripping it through the Actions cache (minutes over the uplink).
+    - name: Use persistent Trivy cache
+      shell: bash
+      run: echo "STATIC_SITE_CHECK_TRIVY_CACHE=$HOME/.cache/trivy" >> "$GITHUB_ENV"
+
+    - name: Scan for fixable CVEs
+      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      with:
+        cache: "false"
+        cache-dir: ${{ env.STATIC_SITE_CHECK_TRIVY_CACHE }}
+        image-ref: ${{ inputs.image }}
+        severity: ${{ inputs.trivy_severity }}
+        ignore-unfixed: true
+        exit-code: "1"
