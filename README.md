@@ -86,3 +86,26 @@ jobs:
           dockerfile_path: deployment/Dockerfile.prod
           push_to_registry: ${{ github.event_name != 'pull_request' }}
 ```
+
+## static-site-check
+
+Gate for nginx static-site images before they are pushed: a smoke test under
+the Mainframe pod restrictions (read-only root, UID 101, no capabilities) and a
+Trivy scan that fails on fixable vulnerabilities of `trivy_severity`. Build the
+image with `load: true` first, run this, and push only afterwards. Repos using it
+let Renovate automerge nginx base image patch and digest updates once it passes.
+
+```yaml
+- name: Check image
+  uses: Lab481/build-container-image-action/static-site-check@main
+  with:
+    image: my-site:ci
+    expect_text: "Page title"
+    ok_paths: |
+      /favicon.png
+```
+
+Trivy only sees CVEs of Debian packages; nginx itself comes from nginx.org's
+package and is not matched. nginx security releases reach the sites through
+Renovate's version updates, not through this scan. The Trivy DB is kept in the
+runner's `~/.cache/trivy`, since the self-hosted runners are persistent.
