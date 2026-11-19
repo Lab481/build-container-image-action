@@ -48,6 +48,10 @@ inputs:
     description: Read and write the BuildKit layer cache in the GitHub Actions cache (true/false, default true)
     default: "true"
     required: false
+  buildx_driver:
+    description: Buildx driver; "docker" reuses the persistent runner's local layer cache (needs use_build_cache false)
+    default: "docker-container"
+    required: false
 ```
 
 ## Example Usage

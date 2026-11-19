@@ -44,6 +44,13 @@ inputs:
       uploading the cache takes longer than rebuilding the layers, e.g. on self-hosted runners with a slow uplink.
     default: "true"
     required: false
+  buildx_driver:
+    description: >-
+      Buildx driver (default docker-container). Use "docker" on persistent self-hosted runners: builds then use the
+      runner's Docker daemon and reuse its local layer cache across steps and jobs, e.g. an image already built and
+      tested earlier in the job. The GitHub Actions cache is not available with this driver; set use_build_cache to false.
+    default: "docker-container"
+    required: false
 
 
 runs:
@@ -54,6 +61,7 @@ runs:
       uses: docker/setup-buildx-action@v4
       with:
         version: ${{ inputs.buildx_version }}
+        driver: ${{ inputs.buildx_driver }}
 
     - name: Log into container registry
       uses: docker/login-action@v4
